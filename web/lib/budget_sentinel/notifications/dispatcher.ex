@@ -19,11 +19,19 @@ defmodule BudgetSentinel.Notifications.Dispatcher do
 
       try do
         case Mailer.deliver(email) do
-          {:ok, _metadata} -> Audit.log_alert(anomaly, recipient, "sent")
-          {:error, _reason} -> Audit.log_alert(anomaly, recipient, "failed")
+          {:ok, _metadata} ->
+            Audit.log_alert(anomaly, recipient, "sent")
+
+          {:error, reason} ->
+            require Logger
+            Logger.error("[Dispatcher] email to #{recipient} failed: #{inspect(reason)}")
+            Audit.log_alert(anomaly, recipient, "failed")
         end
       rescue
-        _ -> Audit.log_alert(anomaly, recipient, "failed")
+        e ->
+          require Logger
+          Logger.error("[Dispatcher] email to #{recipient} crashed: #{inspect(e)}")
+          Audit.log_alert(anomaly, recipient, "failed")
       end
     end)
   end
@@ -41,11 +49,19 @@ defmodule BudgetSentinel.Notifications.Dispatcher do
 
         try do
           case Mailer.deliver(email) do
-            {:ok, _metadata} -> Audit.update_alert_status(alert, "sent")
-            {:error, _reason} -> Audit.update_alert_status(alert, "failed")
+            {:ok, _metadata} ->
+              Audit.update_alert_status(alert, "sent")
+
+            {:error, reason} ->
+              require Logger
+              Logger.error("[Dispatcher] retry to #{alert.recipient} failed: #{inspect(reason)}")
+              Audit.update_alert_status(alert, "failed")
           end
         rescue
-          _ -> Audit.update_alert_status(alert, "failed")
+          e ->
+            require Logger
+            Logger.error("[Dispatcher] retry to #{alert.recipient} crashed: #{inspect(e)}")
+            Audit.update_alert_status(alert, "failed")
         end
     end
   end
