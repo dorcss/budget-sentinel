@@ -26,18 +26,28 @@ defmodule BudgetSentinelWeb.AlertLive.Index do
   def handle_event("retry", %{"id" => id}, socket) do
     if User.can_manage?(socket.assigns.current_user) do
       alert = Audit.get_alert!(id)
-      Dispatcher.retry(alert)
+      pid = self()
 
-      alerts =
-        Audit.list_alerts(
-          socket.assigns.current_user,
-          if(socket.assigns.status_filter, do: [status: socket.assigns.status_filter], else: [])
-        )
+      Task.start(fn ->
+        Dispatcher.retry(alert)
+        send(pid, {:retry_done, alert.id})
+      end)
 
-      {:noreply, socket |> put_flash(:info, "Retried alert to #{alert.recipient}") |> assign(:alerts, alerts)}
+      {:noreply, put_flash(socket, :info, "Retrying alert to #{alert.recipient}…")}
     else
       {:noreply, put_flash(socket, :error, "You don't have permission to retry alerts.")}
     end
+  end
+
+  @impl true
+  def handle_info({:retry_done, _alert_id}, socket) do
+    alerts =
+      Audit.list_alerts(
+        socket.assigns.current_user,
+        if(socket.assigns.status_filter, do: [status: socket.assigns.status_filter], else: [])
+      )
+
+    {:noreply, assign(socket, :alerts, alerts)}
   end
 
   @impl true
