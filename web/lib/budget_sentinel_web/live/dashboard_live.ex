@@ -16,10 +16,20 @@ defmodule BudgetSentinelWeb.DashboardLive do
   @impl true
   def handle_event("run_scan", _params, socket) do
     if User.can_manage?(socket.assigns.current_user) do
+      topic = AnalysisPipeline.topic()
+
       Task.Supervisor.start_child(BudgetSentinel.TaskSupervisor, fn ->
-        AnalysisPipeline.run_detection_scan()
+        try do
+          AnalysisPipeline.run_detection_scan()
+        rescue
+          e ->
+            require Logger
+            Logger.error("[DashboardLive] scan task crashed: #{inspect(e)}")
+            Phoenix.PubSub.broadcast(BudgetSentinel.PubSub, topic, {:scan_completed, 0})
+        end
       end)
 
+      Process.send_after(self(), :scan_timeout, 60_000)
       {:noreply, assign(socket, scanning: true)}
     else
       {:noreply, put_flash(socket, :error, "You don't have permission to run a detection scan.")}
@@ -29,6 +39,14 @@ defmodule BudgetSentinelWeb.DashboardLive do
   @impl true
   def handle_info({:scan_completed, _count}, socket) do
     {:noreply, assign_dashboard_data(socket, scanning: false)}
+  end
+
+  def handle_info(:scan_timeout, socket) do
+    if socket.assigns.scanning do
+      {:noreply, socket |> assign(scanning: false) |> put_flash(:error, "Scan timed out — please try again.")}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:anomaly_detected, _anomaly}, socket) do
