@@ -9,7 +9,7 @@ defmodule BudgetSentinel.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"BudgetSentinel", from_addr})
+      |> from({"Budget Sentinel", from_addr})
       |> subject(subject)
       |> text_body(body)
 
@@ -191,7 +191,7 @@ defmodule BudgetSentinel.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"BudgetSentinel", from_addr})
+      |> from({"Budget Sentinel", from_addr})
       |> subject(subject)
       |> text_body(text_body)
       |> html_body(html_body)

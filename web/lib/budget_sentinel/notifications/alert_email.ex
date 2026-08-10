@@ -6,7 +6,7 @@ defmodule BudgetSentinel.Notifications.AlertEmail do
   def high_risk_alert(%Anomaly{} = anomaly, %AuditReport{} = report, recipient) do
     new()
     |> to(recipient)
-    |> from({"BudgetSentinel", System.get_env("MAIL_FROM") || System.get_env("SMTP_USERNAME") || "onboarding@resend.dev"})
+    |> from({"Budget Sentinel", System.get_env("MAIL_FROM") || System.get_env("SMTP_USERNAME") || "onboarding@resend.dev"})
     |> subject("[BudgetSentinel] High-risk anomaly detected: #{humanize(anomaly.fraud_type)}")
     |> text_body(body(anomaly, report))
   end
